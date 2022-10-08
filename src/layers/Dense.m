@@ -1,5 +1,5 @@
 classdef Dense < matlab.mixin.SetGet
-    
+
     properties (Access = 'public')
         type = 'Dense';
         Nparam
@@ -12,7 +12,7 @@ classdef Dense < matlab.mixin.SetGet
         w_state
         b_state
     end
-    
+
     methods (Access = 'public')
         % Constructeur
         function self = Dense(size_in, size_out)
@@ -24,7 +24,7 @@ classdef Dense < matlab.mixin.SetGet
             self.size_in = size_in;
             self.size_out = size_out;
         end
-        
+
         function self = init(self)
             r = sqrt(6/(self.size_in + self.size_out));
             self.W = -r + 2*r*rand(self.size_in, self.size_out); % Loi uniforme
