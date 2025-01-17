@@ -17,7 +17,7 @@ end
 if ~isfield(state, 'eta')
     state.eta = 1e-2;
 end
-if ~isfield(state, 'momentum') 
+if ~isfield(state, 'momentum')
     state.momentum = 0.5;
 end
 if ~isfield(state, 'mini')

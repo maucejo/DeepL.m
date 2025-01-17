@@ -1,10 +1,10 @@
 classdef NeuralNet < matlab.mixin.SetGet
-    
+
     properties (Access = 'public')
         layers             % Cellule contenant les couches
-        
+
         eta = 1e-3;        % Learning rate
-        minLoss = 1e-6;     % Tolérance pour la convergence
+        minLoss = 1e-6;    % Tolérance pour la convergence
         max_epoch = 5e4;   % Nombre d'époque max
         reg = false        % Activation de la régularisation
         shuffle = true;    % Mélange des données
@@ -24,11 +24,11 @@ classdef NeuralNet < matlab.mixin.SetGet
         metrics_test
         metrics_type = 'mse';
         grad_update
-    end 
+    end
     methods (Access = 'public')
         %% Constructeur
         function self = NeuralNet(varargin)
-            
+
             if ~isempty(varargin)
                 self.layers = varargin{1};
                 self.Nlayers = length(self.layers);
@@ -36,27 +36,27 @@ classdef NeuralNet < matlab.mixin.SetGet
                 self.Nlayers = 0;
             end
         end
-        
+
         function self = init(self)
             for ee = 1:self.Nlayers
-               self.layers{ee}.init; 
+               self.layers{ee}.init;
             end
         end
-        
-        %% Ajout d'une couche      
+
+        %% Ajout d'une couche
         function self = add(self, layer, varargin)
             self.Nlayers = self.Nlayers + 1;
-            
+
             if isempty(varargin)
                 self.layers{self.Nlayers} = layer;
             else
                 ID_layer = varargin{1};
-                
+
                 if ID_layer > (self.Nlayers - 1)
                     self.layers{self.Nlayers} = layer;
                 else
                    new_layers = cell(1, self.Nlayers);
-                   
+
                    for ee = 1:self.Nlayers
                        if ee < ID_layer
                            new_layers{ee} = self.layers{ee};
@@ -66,12 +66,12 @@ classdef NeuralNet < matlab.mixin.SetGet
                            new_layers{ee} = self.layers{ee - 1};
                        end
                    end
-                   
+
                    self.layers = new_layers;
                 end
             end
         end
-        
+
         %% Enlèvement d'une couche
         function self = remove(self, varargin)
             if isempty(varargin)
@@ -79,25 +79,25 @@ classdef NeuralNet < matlab.mixin.SetGet
             else
                 ID_rem_layer = varargin{1};
             end
-            
+
             if isempty(self.layers)
                 disp('Le réseau est vide')
                 return;
             end
-            
+
             if ID_rem_layer > self.Nlayers
                 ID_rem_layer = self.Nlayers;
                 disp('La dernière couche du réseau a été enlevée')
             end
-            
+
             self.layers(ID_rem_layer) = [];
             self.Nlayers = length(self.layers);
         end
-        
+
         %% Vérification de la cohérence du modèle
         function self = consistency(self)
             for ee = 1:self.Nlayers
-               type = self.layers{ee}.layer_type(1:3);
+               type = self.layers{ee}.type(1:3);
                if strcmp(type, 'Act') || strcmp(type, 'Dro')
                    continue;
                else
@@ -120,30 +120,30 @@ classdef NeuralNet < matlab.mixin.SetGet
             end
             disp('Les dimensions du réseau sont consistentes')
         end
-        
+
         %% Résumé du modèle
-        function summary(self)          
+        function summary(self)
             varTypes = ["int64", "string", "int64"];
             varNames = ["Layer ID", "Type", "Trainable parameters"];
             T = table('Size', [self.Nlayers, 3], 'VariableTypes', varTypes, 'VariableNames', varNames);
-            
+
             Nparam_tot = 0;
             for ee = 1:self.Nlayers
                 Nparam_layer = self.layers{ee}.Nparam;
                 Nparam_tot = Nparam_tot + Nparam_layer;
-                
+
                 T(ee, :) = {ee, self.layers{ee}.type, Nparam_layer};
             end
             disp(T)
             disp(['Number of trainable parameters: ' num2str(Nparam_tot)])
         end
-        
+
         %% Entraînement
         function self = train(self, Xtrain, Ytrain, options, varargin)
-            
+
             % Initialisation
             Nsamples = size(Xtrain, 2);
-            
+
             if nargin == 3
                 self.batch_size = Nsamples;
                 self.optimizer = 'adabelief';
@@ -154,35 +154,35 @@ classdef NeuralNet < matlab.mixin.SetGet
                 if isfield(options, 'eta')
                     self.eta = options.eta;
                 end
-                
+
                 if isfield(options, 'minLoss')
                     self.minLoss = options.minLoss;
                 end
-                
+
                 if isfield(options, 'max_epoch')
                     self.max_epoch = options.max_expoch;
                 end
-                
+
                 if isfield(options, 'batch_size')
                     self.batch_size = options.batch_size;
                 end
-                
+
                 if isfield(options, 'reg')
                     self.reg = options.reg;
-                    
+
                     if self.reg
                         if isfield(options.reg_opt, 'type')
                             self.reg_type = lower(options.reg_opts.type);
                         else
                             self.reg_type = 'l2';
                         end
-                        
+
                         reg_func_name = [self.reg_type '_reg_loss'];
                         reg_loss_func = str2func(reg_func_name);
-                        
+
                         reg_backward_name = [self.reg_type '_backward'];
                         self.backward_reg = str2func(reg_backward_name);
-                        
+
                         if isfield(options.reg_opt, 'lambda')
                             self.lambda = options.reg_opt.lambda;
                         else
@@ -194,26 +194,26 @@ classdef NeuralNet < matlab.mixin.SetGet
                         end
                     end
                 end
-                
+
                 if isfield(options, 'batch_size')
                     self.batch_size = options.batch_size;
                 else
                     self.batch_size = Nsamples;
                 end
-                
+
                 if isfield(options, 'shuffle')
                     self.shuffle = options.shuffle;
                 end
-                
+
                 if isfield(options, 'optimizer')
                     self.optimizer = lower(options.optimizer);
                 else
                     self.optimizer = 'adabelief';
                 end
                 self.grad_update = str2func(self.optimizer);
-                
+
                 if isfield(options, 'loss_type')
-                    self.loss_type = lower(options.loss_type);    
+                    self.loss_type = lower(options.loss_type);
                 end
                 loss_name = [self.loss_type, '_loss'];
                 loss_func = str2func(loss_name);
@@ -237,7 +237,7 @@ classdef NeuralNet < matlab.mixin.SetGet
                     self.monitor = options.monitor;
                 end
             end
-            
+
             if ~self.shuffle
                 Xs = Xtrain;
                 Ys = Ytrain;
@@ -250,10 +250,10 @@ classdef NeuralNet < matlab.mixin.SetGet
                     self.metrics_test = nan(self.max_epoch, 1);
                 end
             end
-            
+
             % Création des mini-batches
             [idx_mb, Nmini_batch] = self.create_mini_batch(Nsamples);
-            
+
             % Apprentissage
             self.epoch = 1;
             self.loss = Inf;
@@ -264,24 +264,24 @@ classdef NeuralNet < matlab.mixin.SetGet
                         Xs = Xtrain(:, idx);
                         Ys = Ytrain(:, idx);
                     end
-                    
+
                     Xs = Xs(:, idx_mb{ee});
                     Ys = Ys(:, idx_mb{ee});
-                    
+
                     % 1. Forward pass
                     out = self.pred(Xs, 'train');
-                    
+
                     % 2. Calcul de la fonctionnelle d'erreur
                     [self.loss, dout] = loss_func(out, Ys);
-                    
+
                     if self.reg
                        reg_loss = reg_loss_func(self.layers, self.lambda);
                        self.loss = self.loss + reg_loss;
                     end
-                    
+
                     % 3. Backward pass
                     self.backward(dout);
-                    
+
                     % 4. Mise à jour des gradients
                     self.update
                 end
@@ -289,7 +289,7 @@ classdef NeuralNet < matlab.mixin.SetGet
                 % 5. Monitoring
                  self.loss_train(self.epoch) = self.loss;
                  self.metrics_train(self.epoch) = metrics_func(out, Ys);
-  
+
                 if ~isempty(varargin)
                     out_test = self.pred(Xtest);
                     self.metric_test(self.epoch) = metrics_func(out_test, Ytest);
@@ -305,31 +305,31 @@ classdef NeuralNet < matlab.mixin.SetGet
                         pause(0.01)
                     end
                 end
-                
+
                 % 6. Fin d'une époque
                 self.epoch = self.epoch + 1;
             end
-            
+
             % Fin apprentissage
             self.epoch = self.epoch - 1;
-            
+
             self.loss_train = self.loss_train(1:self.epoch);
             self.metrics_train = self.metrics_train(1:self.epoch);
             if ~isempty(varargin)
                 self.metrics_test = self.metrics_test(1:self.epoch);
             end
-                       
+
             self.istrained = true;
         end
-        
+
         %% Prédiction du modèle
         function X = pred(self, X, varargin)
             if isempty(varargin)
                 mode = 'test';
             else
-                mode = varargin{1}; 
+                mode = varargin{1};
             end
-                        
+
             for ee = 1:self.Nlayers
                 if isprop(self.layers{ee}, 'traintest')
                     X = self.layers{ee}.forward(X, mode);
@@ -338,7 +338,7 @@ classdef NeuralNet < matlab.mixin.SetGet
                 end
             end
         end
-        
+
         %% Rétro-propagation des gradients
          function backward(self, dout)
              for ee = self.Nlayers:-1:1
@@ -346,24 +346,24 @@ classdef NeuralNet < matlab.mixin.SetGet
                  if self.reg
                      backward_reg(self.layers{ee}, self.lambda);
                  end
-                 
+
                  if self.layers{ee}.Nparam > 0
                     self.layers{ee}.w_state.eta = self.eta;
                     self.layers{ee}.w_state.max_iter = self.max_epoch;
-                    
+
                     self.layers{ee}.b_state.eta = self.eta;
                     self.layers{ee}.b_state.max_iter = self.max_epoch;
                  end
              end
          end
-        
+
          %% Mise à jour du réseau
          function update(self)
              for ee = self.Nlayers:-1:1
                  if ~isempty(self.layers{ee}.grad)
                     Wu = self.grad_update(self.layers{ee}, 'w');
                     bu = self.grad_update(self.layers{ee}, 'b');
-                    
+
                     layer_type = self.layers{ee}.type(1:5);
                     if strcmp(layer_type, 'Dense')
                         self.layers{ee}.W = self.layers{ee}.W - Wu;
@@ -375,12 +375,12 @@ classdef NeuralNet < matlab.mixin.SetGet
                  end
              end
          end
-        
+
         %% Création des mini-batches
         function [idx_mb, Nmini_batch] = create_mini_batch(self, Nsamples)
             Nmini_batch = ceil(Nsamples/self.batch_size);
             idx_mb = cell(Nmini_batch, 1);
-            
+
             if Nmini_batch >= 1
                 idx_mb{1} = 1:Nsamples;
             else

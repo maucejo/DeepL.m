@@ -34,19 +34,19 @@ classdef Dense < matlab.mixin.SetGet
             self.b_state = [];
             self.X = [];
         end
-        
+
         % Forward pass
         function out = forward(self, X)
            self.X = X;
            out = self.W.'*self.X + self.b;
         end
-        
+
         % Backward pass
         function dX = backward(self, dout)
-            dW = self.X*dout.'; 
+            dW = self.X*dout.';
             db = sum(dout, 2);
             dX = self.W*dout;
-            
+
             self.grad.weight = dW;
             self.grad.bias = db;
         end
